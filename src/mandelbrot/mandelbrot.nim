@@ -1,25 +1,22 @@
 import nimgl/[glfw, opengl]
 
-
+# keeps track of the GL program and the shaders, to interact with GL
 var GLData: tuple[program, vertexShader, fragmentShader: uint32]
 const 
   WIN_WIDTH = 1000
   WIN_HEIGHT = 800
 
+# navigation parameters
 var 
   center_x = 0.0f
   center_y = 0.0f
   zoom:float64 = 1.0
-  dx=0.0
-  dy=0.0
-  zf=0.99
+  dx = -0.001
+  dy = 0.0
+  zf = 0.999
 
+# handle keys
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =
-#   if key == GLFWKey.ESCAPE and action == GLFWPress:
-#     window.setWindowShouldClose(true)
-
-
-# proc process_input(window: GLFWwindow)
   if action == GLFWPress:
     if key == GLFWKey.ESCAPE:
       window.setWindowShouldClose(true)
@@ -32,7 +29,7 @@ proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mod
     if key == GLFWKey.RIGHT:
       dx += 0.001f;
 
-
+# prints an error message if necessary (if the shader won't)
 proc logShaderCompilationFailure(shader: uint32, shader_path:string) = 
   var logSize: int32
   glGetShaderiv(shader, GL_INFO_LOG_LENGTH, logSize.addr)
@@ -46,6 +43,7 @@ proc logShaderCompilationFailure(shader: uint32, shader_path:string) =
   dealloc(logStr)
   quit(-1)
 
+# prints an error message if necessary
 proc logProgramLinkingError() =
   var logSize: int32
   glGetProgramiv(GLData.program, GL_INFO_LOG_LENGTH, logSize.addr)
@@ -57,6 +55,7 @@ proc logProgramLinkingError() =
   dealloc(logStr)
   quit(-1)
 
+# compiles a shader given a source file and a type 
 proc addShader(shader_path: string, shader_type: GLenum):uint32 =
   let 
     shadercode = readFile(shader_path)
@@ -72,6 +71,7 @@ proc addShader(shader_path: string, shader_type: GLenum):uint32 =
   return shader
 
 
+# loads program and shaders
 proc initShaders(vertex_shader_path: string, fragment_shader_path: string) = 
   GLData.program = glCreateProgram()
   GLData.vertexShader = addShader(vertex_shader_path, GL_VERTEX_SHADER)
@@ -83,6 +83,7 @@ proc initShaders(vertex_shader_path: string, fragment_shader_path: string) =
   if success == 0: logProgramLinkingError()
 
 
+# pass data to the fragment shader
 proc set_float(name: string, value:float) =
   glUniform1f(glGetUniformLocation(GLData.program, name.cstring()), value.cfloat());
 
@@ -107,6 +108,7 @@ proc main() =
  
   assert glInit()
   
+  # two triangles that together make up the entire window
   var vertices = @[
     -1.0f, -1.0f, -0.0f,
      1.0f,  1.0f, -0.0f,
@@ -120,6 +122,7 @@ proc main() =
   # | .' |
   # 0'---3
   
+  # load the data into GL
   var mesh: tuple[vao,vbo,ebo: uint32]
 
   glGenVertexArrays(1, mesh.vao.addr)
@@ -141,11 +144,13 @@ proc main() =
   glBindVertexArray(mesh.vao)
   initShaders("src/mandelbrot/shader.vert", "src/mandelbrot/shader.frag")
 
+  glUseProgram(GLData.program)
+  glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+  glBindVertexArray(mesh.vao)
+  
+  # main loop
   while not window.windowShouldClose:
-    glClearColor(0.2, 0.2, 0.2, 0.5)
-    glUseProgram(GLData.program)
-    glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
-
+    # update zoom params
     zoom *= zf
     if zf < 0.0: zf = 0.0
     center_y += dy * zoom
@@ -155,11 +160,11 @@ proc main() =
     if center_x > 1.0f: center_x = 1.0f
     if center_x < -1.0f: center_x = -1.0f
 
+    # pass the data to the shader
     set_float("zoom", zoom)
     set_float("center_x", center_x)
     set_float("center_y", center_y)
 
-    glBindVertexArray(mesh.vao)
     glDrawElements(GL_TRIANGLES, indices.len.cint, GL_UNSIGNED_INT, nil)
     window.swapBuffers()
     glfwPollEvents()
