@@ -165,8 +165,8 @@ proc main() =
     glDrawElements(GL_TRIANGLES, indices.len.cint, GL_UNSIGNED_INT, nil)
     window.swapBuffers()
     glfwPollEvents()
-   
-
+  
+  #cleanup
   window.destroyWindow()
   glDeleteShader(GLData.vertexShader)
   glDeleteShader(GLData.fragmentShader)
