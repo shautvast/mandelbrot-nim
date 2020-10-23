@@ -87,9 +87,6 @@ proc initShaders(vertex_shader_path: string, fragment_shader_path: string) =
 proc set_float(name: string, value:float) =
   glUniform1f(glGetUniformLocation(GLData.program, name.cstring()), value.cfloat());
 
-# proc set_vec4(name: string, vec: Vec4[float]) =
-#     glUniform4f(glGetUniformLocation(GLData.program, name.cstring()), vec[0].cfloat(), vec[1].cfloat(), vec[2].cfloat(), vec[3].cfloat())
-
 
 proc main() =
   assert glfwInit()
