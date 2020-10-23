@@ -1,14 +1,36 @@
 import nimgl/[glfw, opengl]
 
+
 var GLData: tuple[program, vertexShader, fragmentShader: uint32]
 const 
   WIN_WIDTH = 1000
   WIN_HEIGHT = 800
 
+var 
+  center_x = 0.0f
+  center_y = 0.0f
+  zoom:float64 = 1.0
+  dx=0.0
+  dy=0.0
+  zf=0.99
 
 proc keyProc(window: GLFWWindow, key: int32, scancode: int32, action: int32, mods: int32): void {.cdecl.} =
-  if key == GLFWKey.ESCAPE and action == GLFWPress:
-    window.setWindowShouldClose(true)
+#   if key == GLFWKey.ESCAPE and action == GLFWPress:
+#     window.setWindowShouldClose(true)
+
+
+# proc process_input(window: GLFWwindow)
+  if action == GLFWPress:
+    if key == GLFWKey.ESCAPE:
+      window.setWindowShouldClose(true)
+    if key == GLFWKey.UP:
+      dy += 0.001f
+    if key == GLFWKey.DOWN:
+      dy -= 0.001f
+    if key == GLFWKey.LEFT:
+      dx -= 0.001f
+    if key == GLFWKey.RIGHT:
+      dx += 0.001f;
 
 
 proc logShaderCompilationFailure(shader: uint32, shader_path:string) = 
@@ -61,6 +83,13 @@ proc initShaders(vertex_shader_path: string, fragment_shader_path: string) =
   if success == 0: logProgramLinkingError()
 
 
+proc set_float(name: string, value:float) =
+  glUniform1f(glGetUniformLocation(GLData.program, name.cstring()), value.cfloat());
+
+# proc set_vec4(name: string, vec: Vec4[float]) =
+#     glUniform4f(glGetUniformLocation(GLData.program, name.cstring()), vec[0].cfloat(), vec[1].cfloat(), vec[2].cfloat(), vec[3].cfloat())
+
+
 proc main() =
   assert glfwInit()
 
@@ -70,7 +99,7 @@ proc main() =
   glfwWindowHint(GLFWOpenglProfile, GLFW_OPENGL_CORE_PROFILE)
   glfwWindowHint(GLFWResizable, GLFW_FALSE)
 
-  let window = glfwCreateWindow(WIN_WIDTH, WIN_HEIGHT, "Simple Mandelbrot fractal")
+  let window = glfwCreateWindow(WIN_WIDTH, WIN_HEIGHT, "Mandelbrot fractal")
   assert window != nil
 
   discard window.setKeyCallback(keyProc)
@@ -116,10 +145,25 @@ proc main() =
     glClearColor(0.2, 0.2, 0.2, 0.5)
     glUseProgram(GLData.program)
     glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+
+    zoom *= zf
+    if zf < 0.0: zf = 0.0
+    center_y += dy * zoom
+    if center_y > 1.0f: center_y = 1.0f
+    if center_y < -1.0f: center_y = -1.0f
+    center_x += dx * zoom
+    if center_x > 1.0f: center_x = 1.0f
+    if center_x < -1.0f: center_x = -1.0f
+
+    set_float("zoom", zoom)
+    set_float("center_x", center_x)
+    set_float("center_y", center_y)
+
     glBindVertexArray(mesh.vao)
     glDrawElements(GL_TRIANGLES, indices.len.cint, GL_UNSIGNED_INT, nil)
     window.swapBuffers()
     glfwPollEvents()
+   
 
   window.destroyWindow()
   glDeleteShader(GLData.vertexShader)
